@@ -25,7 +25,7 @@ const supabase = createClient<Database>(
 
 const ADMIN_CHAT_ID = -814489354;
 
-const VERSION = 108;
+const VERSION = 109;
 bot.command("version", async (ctx) => await ctx.reply(`version ${VERSION}`));
 
 // Read user's info from the database and store it in the context.

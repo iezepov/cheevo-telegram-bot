@@ -10,21 +10,27 @@ export const OnboardingData: BotData = {
           botActions: [
             {
               type: BotActionType.SendMessage,
-              text: { en: "I am so happy you are here!", ru: "Я - Чиво!" },
+              text: {
+                en: "I am so happy you are here!",
+                ru: "Я так рад, что ты со мной!",
+              },
             },
             {
               type: BotActionType.SendMessage,
-              text: { en: "I want to be your English buddy", ru: "Я - Чиво!" },
+              text: {
+                en: "I want to be your English buddy",
+                ru: "Будем вместе оттачивать произношение!",
+              },
             },
             {
               type: BotActionType.SendMessage,
-              text: { en: "Can I ask you a question?", ru: "Я - Чиво!" },
+              text: { en: "Can I ask you a question?", ru: "Вопросик есть." },
             },
             {
               type: BotActionType.SendMessage,
               text: {
                 en: "What do you think your current level of English is?",
-                ru: "Я - Чиво!",
+                ru: "Ты как свой уровень оцениваешь?",
               },
             },
           ],
@@ -92,8 +98,9 @@ export const OnboardingData: BotData = {
             {
               type: BotActionType.SendMessage,
               text: {
-                en: "What do you think?",
-                ru: "А ты как думаешь?",
+                en: "What do you think? (Try sending a voice message)",
+                ru:
+                  "А ты как думаешь? (Попробуй отправить голосовое сообщение)",
               },
             },
           ],

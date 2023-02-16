@@ -36,7 +36,7 @@ bot.use(async (ctx, next) => {
       );
     if (data && data[0]) {
       const [res] = data;
-      ctx.user = { language: res.language as "en" | "ru", state: res.state };
+      ctx.user = { language: res.language, state: res.state };
     }
   }
   await next();

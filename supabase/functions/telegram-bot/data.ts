@@ -3,13 +3,13 @@ import { BotActionType, BotData } from "./types.ts";
 export const OnboardingData: BotData = {
   messages: {
     "say_again": {
-      "en": "Sorry, I didn't get that. Could you please repeat?",
-      "ru": "Извини, я не понял. Можешь повторить?",
+      en: "Sorry, I didn't get that. Could you please repeat?",
+      ru: "Извини, я не понял. Можешь повторить?",
     },
     "language_confirmed": {
-      "en":
+      en:
         "Great! I will speak to you in English. If you need to change it, just type /language.",
-      "ru":
+      ru:
         "Отлично! Я буду говорить на английском. Если захочешь поменять, просто отправь /language.",
     },
   },

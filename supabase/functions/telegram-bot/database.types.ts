@@ -34,7 +34,7 @@ export interface Database {
           created_at: string
           first_name: string
           id: number
-          language: string
+          language: Database["public"]["Enums"]["language"]
           last_name: string | null
           state: string
           username: string | null
@@ -43,7 +43,7 @@ export interface Database {
           created_at?: string
           first_name: string
           id: number
-          language: string
+          language: Database["public"]["Enums"]["language"]
           last_name?: string | null
           state: string
           username?: string | null
@@ -52,7 +52,7 @@ export interface Database {
           created_at?: string
           first_name?: string
           id?: number
-          language?: string
+          language?: Database["public"]["Enums"]["language"]
           last_name?: string | null
           state?: string
           username?: string | null
@@ -66,7 +66,7 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      language: "en" | "ru"
     }
     CompositeTypes: {
       [_ in never]: never

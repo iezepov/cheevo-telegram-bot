@@ -3,8 +3,8 @@ export enum BotActionType {
 }
 
 export interface LocalizedString {
-  "ru": string;
-  "en": string;
+  ru: string;
+  en: string;
 }
 
 interface MessageAction {

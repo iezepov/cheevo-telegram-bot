@@ -25,9 +25,6 @@ const supabase = createClient<Database>(
 
 const ADMIN_CHAT_ID = -814489354;
 
-const VERSION = 109;
-bot.command("version", async (ctx) => await ctx.reply(`version ${VERSION}`));
-
 // Read user's info from the database and store it in the context.
 bot.use(async (ctx, next) => {
   if (ctx.from) {
@@ -58,6 +55,18 @@ bot.use(async (ctx, next) => {
   await next();
 });
 
+const VERSION = 118;
+bot.command(
+  "info",
+  async (ctx) =>
+    await ctx.reply(
+      `version: <b>${VERSION}</b>\nUser info:\n<pre>${
+        JSON.stringify(ctx.user, null, 2)
+      }</pre>`,
+      { parse_mode: "HTML" },
+    ),
+);
+
 const LANGAUGE_SELECT_REPLIES: LocalizedString = {
   "en": "🇬🇧 I am okay with English.",
   "ru": "🇷🇺 Ой, давай по-русски!",
@@ -71,7 +80,7 @@ bot.command("start", async (ctx) => {
     reply_markup: new Keyboard()
       .text(LANGAUGE_SELECT_REPLIES["en"]).row()
       .text(LANGAUGE_SELECT_REPLIES["ru"])
-      .resized().oneTime(),
+      .oneTime().persistent(),
   });
 });
 
@@ -90,16 +99,12 @@ bot.command("language", async (ctx) => {
 
 bot.callbackQuery("set-lang-ru", async (ctx) => {
   await supabase.from("users").update({ language: "ru" }).eq("id", ctx.from.id);
-  await ctx.answerCallbackQuery({
-    text: "Готово! Теперь я говорю по-русски!",
-  });
+  await ctx.answerCallbackQuery("Готово! Теперь я говорю по-русски!");
 });
 
 bot.callbackQuery("set-lang-en", async (ctx) => {
   await supabase.from("users").update({ language: "en" }).eq("id", ctx.from.id);
-  await ctx.answerCallbackQuery({
-    text: "Done! I will speak English from now on.",
-  });
+  await ctx.answerCallbackQuery("Done! I will speak English from now on.");
 });
 
 /*
@@ -108,7 +113,6 @@ bot.callbackQuery("set-lang-en", async (ctx) => {
 -------------------------------
 */
 bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["en"], async (ctx) => {
-  console.debug("Executing lang handler - en");
   const user = ctx.from!;
   await Promise.all([
     supabase.from("users").upsert({
@@ -119,14 +123,15 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["en"], async (ctx) => {
       language: "en",
       state: "start",
     }),
-    ctx.reply(`English it is!`, {
-      reply_markup: new Keyboard().text("What's next?").resized().oneTime(),
+    ctx.reply(OnboardingData.messages["language_confirmed"].en, {
+      reply_markup: new Keyboard()
+        .text("What's next?")
+        .oneTime().persistent(),
     }),
   ]);
 });
 
 bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["ru"], async (ctx) => {
-  console.debug("Executing lang handler - ru");
   const user = ctx.from!;
   await Promise.all([
     supabase.from("users").upsert({
@@ -137,8 +142,8 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["ru"], async (ctx) => {
       language: "ru",
       state: "start",
     }),
-    ctx.reply(`Без проблем!`, {
-      reply_markup: new Keyboard().text("Что дальше?").resized().oneTime(),
+    ctx.reply(OnboardingData.messages["language_confirmed"].ru, {
+      reply_markup: new Keyboard().text("Что дальше?").oneTime(),
     }),
   ]);
 });
@@ -151,14 +156,14 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["ru"], async (ctx) => {
 
 const makeReplyKeyboard = (state: State, language: keyof LocalizedString) => {
   let keyboard = new Keyboard();
-  state.replies.forEach((reply) => {
-    keyboard = keyboard.add(reply.text[language]).row();
+  state.replies.forEach((reply, index, array) => {
+    keyboard = keyboard.text(reply.text[language]);
+    if (index !== array.length - 1) keyboard = keyboard.row();
   });
-  return keyboard.oneTime().resized();
+  return keyboard.oneTime().persistent();
 };
 
 bot.on("message:text", async (ctx) => {
-  console.debug("Executing message handler");
   if (!ctx.user) {
     await ctx.reply("/start");
     return;
@@ -168,13 +173,13 @@ bot.on("message:text", async (ctx) => {
   const state = OnboardingData.states[ctx.user.state];
 
   const recivedReply = state.replies.find((reply) =>
-    reply.text[language] == ctx.message.text
+    reply.text[language] === ctx.message.text
   );
 
   if (recivedReply) {
     for (let i = 0; i < recivedReply.botActions.length - 1; i++) {
       const action = recivedReply.botActions[i];
-      if (action.type == BotActionType.SendMessage) {
+      if (action.type === BotActionType.SendMessage) {
         await ctx.reply(action.text[language]);
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
@@ -182,7 +187,7 @@ bot.on("message:text", async (ctx) => {
 
     // We send the keyboard with the last one.
     const action = recivedReply.botActions[recivedReply.botActions.length - 1];
-    if (action.type == BotActionType.SendMessage) {
+    if (action.type === BotActionType.SendMessage) {
       const nextState = OnboardingData.states[recivedReply.nextState];
       await Promise.all([
         ctx.reply(action.text[language], {
@@ -195,7 +200,7 @@ bot.on("message:text", async (ctx) => {
       ]);
     }
   } else {
-    await ctx.reply("Sorry I didn't get that! Еще раз скажи?", {
+    await ctx.reply(OnboardingData.messages["say_again"][language], {
       reply_markup: makeReplyKeyboard(state, language),
     });
   }
@@ -213,9 +218,7 @@ bot.on("message:voice", async (ctx) => {
       ctx.forwardMessage(ADMIN_CHAT_ID),
       bot.api.sendMessage(
         ADMIN_CHAT_ID,
-        `🎙️ Got a new message from <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>!
-
-Get back to them with the feedback within <tg-spoiler>24 hours</tg-spoiler>! `,
+        `🎙️ Got a new message from <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>!\n\nGet back to them with the feedback within <tg-spoiler>24 hours</tg-spoiler>! `,
         { parse_mode: "HTML" },
       ),
       ctx.reply("Gotcha! Will get back to you soon."),

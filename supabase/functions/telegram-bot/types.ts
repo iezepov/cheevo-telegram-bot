@@ -26,4 +26,5 @@ export interface State {
 
 export interface BotData {
   states: { [key: string]: State };
+  messages: { [key: string]: LocalizedString };
 }

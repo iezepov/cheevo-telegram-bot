@@ -6,12 +6,8 @@ import {
 } from "https://deno.land/x/grammy@v1.14.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { Database } from "./database.types.ts";
-import {
-  BotActionType,
-  LocalizedString,
-  OnboardingData,
-  State,
-} from "./data.ts";
+import { BotActionType, LocalizedString, State } from "./types.ts";
+import { OnboardingData } from "./data.ts";
 
 interface UserProperties {
   language: keyof LocalizedString;
@@ -29,7 +25,7 @@ const supabase = createClient<Database>(
 
 const ADMIN_CHAT_ID = -814489354;
 
-const VERSION = 105;
+const VERSION = 108;
 bot.command("version", async (ctx) => await ctx.reply(`version ${VERSION}`));
 
 // Read user's info from the database and store it in the context.
@@ -154,11 +150,11 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["ru"], async (ctx) => {
 */
 
 const makeReplyKeyboard = (state: State, language: keyof LocalizedString) => {
-  let keyboard = new Keyboard().oneTime().resized();
-  state.replies.forEach((r) => {
-    keyboard = keyboard.add(r.text[language]);
+  let keyboard = new Keyboard();
+  state.replies.forEach((reply) => {
+    keyboard = keyboard.add(reply.text[language]).row();
   });
-  return keyboard;
+  return keyboard.oneTime().resized();
 };
 
 bot.on("message:text", async (ctx) => {
@@ -179,9 +175,8 @@ bot.on("message:text", async (ctx) => {
     for (let i = 0; i < recivedReply.botActions.length - 1; i++) {
       const action = recivedReply.botActions[i];
       if (action.type == BotActionType.SendMessage) {
-        // await ctx.replyWithChatAction("typing");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
         await ctx.reply(action.text[language]);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 

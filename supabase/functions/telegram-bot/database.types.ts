@@ -34,27 +34,27 @@ export interface Database {
           created_at: string
           first_name: string
           id: number
-          is_bot: boolean
-          language_code: string | null
+          language: string
           last_name: string | null
+          state: string
           username: string | null
         }
         Insert: {
           created_at?: string
           first_name: string
           id: number
-          is_bot: boolean
-          language_code?: string | null
+          language: string
           last_name?: string | null
+          state: string
           username?: string | null
         }
         Update: {
           created_at?: string
           first_name?: string
           id?: number
-          is_bot?: boolean
-          language_code?: string | null
+          language?: string
           last_name?: string | null
+          state?: string
           username?: string | null
         }
       }

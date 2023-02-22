@@ -6,15 +6,23 @@ import {
 } from "https://deno.land/x/grammy@v1.14.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { Database } from "./database.types.ts";
-import { BotActionType, LocalizedString, State } from "./types.ts";
-import { OnboardingData } from "./data.ts";
+import {
+  BotActionType,
+  LocalizedString,
+  OnboardingData,
+  State,
+  StateNames,
+} from "./data.ts";
 
 interface UserProperties {
   language: keyof LocalizedString;
-  state: string;
+  state: StateNames;
 }
 
 type MyContext = Context & { user: UserProperties | undefined };
+
+const VERSION = 125;
+const MESSAGES_DELAY = 2750;
 
 export const bot = new Bot<MyContext>(Deno.env.get("BOT_TOKEN") || "");
 
@@ -28,7 +36,6 @@ const ADMIN_CHAT_ID = -814489354;
 // Read user's info from the database and store it in the context.
 bot.use(async (ctx, next) => {
   if (ctx.from) {
-    console.debug("Supabase read call");
     const { data } = await supabase.from("users").select("language, state")
       .eq(
         "id",
@@ -36,7 +43,7 @@ bot.use(async (ctx, next) => {
       );
     if (data && data[0]) {
       const [res] = data;
-      ctx.user = { language: res.language, state: res.state };
+      ctx.user = { language: res.language, state: res.state as StateNames };
     }
   }
   await next();
@@ -45,7 +52,6 @@ bot.use(async (ctx, next) => {
 // Log every user's message to the database.
 bot.use(async (ctx, next) => {
   if (ctx.message && ctx.from) {
-    console.debug("Logging user's message.");
     await supabase.from("messages").insert({
       user_id: ctx.from.id,
       // deno-lint-ignore no-explicit-any
@@ -55,17 +61,31 @@ bot.use(async (ctx, next) => {
   await next();
 });
 
-const VERSION = 118;
 bot.command(
   "info",
-  async (ctx) =>
+  async (ctx) => {
+    const info = JSON.stringify(ctx.user, null, 2);
     await ctx.reply(
-      `version: <b>${VERSION}</b>\nUser info:\n<pre>${
-        JSON.stringify(ctx.user, null, 2)
-      }</pre>`,
+      `version: <b>${VERSION}</b>\nUser info:\n<pre>${info}</pre>`,
       { parse_mode: "HTML" },
-    ),
+    );
+  },
 );
+
+// TODO: This doesn't quite work. Need to actually parse enum.
+// bot.command(
+//   "state",
+//   async (ctx) => {
+//     if (ctx.from && ctx.message) {
+//       const newState = ctx.message.text.slice(7) as StateNames;
+//       const res = await supabase
+//         .from("users")
+//         .update({ state: newState })
+//         .eq("id", ctx.from.id);
+//       await ctx.reply(res.statusText);
+//     }
+//   },
+// );
 
 const LANGAUGE_SELECT_REPLIES: LocalizedString = {
   "en": "🇬🇧 I am okay with English.",
@@ -73,14 +93,13 @@ const LANGAUGE_SELECT_REPLIES: LocalizedString = {
 };
 
 bot.command("start", async (ctx) => {
-  console.debug("Executing start");
   await ctx.reply(`Hello ${ctx.from!.first_name}! 👋`);
 
   await ctx.reply("First of all. What language would you like to speak?", {
     reply_markup: new Keyboard()
       .text(LANGAUGE_SELECT_REPLIES["en"]).row()
       .text(LANGAUGE_SELECT_REPLIES["ru"])
-      .oneTime().persistent(),
+      .oneTime().resized(),
   });
 });
 
@@ -99,12 +118,12 @@ bot.command("language", async (ctx) => {
 
 bot.callbackQuery("set-lang-ru", async (ctx) => {
   await supabase.from("users").update({ language: "ru" }).eq("id", ctx.from.id);
-  await ctx.answerCallbackQuery("Готово! Теперь я говорю по-русски!");
+  await ctx.answerCallbackQuery("Готово!");
 });
 
 bot.callbackQuery("set-lang-en", async (ctx) => {
   await supabase.from("users").update({ language: "en" }).eq("id", ctx.from.id);
-  await ctx.answerCallbackQuery("Done! I will speak English from now on.");
+  await ctx.answerCallbackQuery("Done!");
 });
 
 /*
@@ -126,7 +145,7 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["en"], async (ctx) => {
     ctx.reply(OnboardingData.messages["language_confirmed"].en, {
       reply_markup: new Keyboard()
         .text("What's next?")
-        .oneTime().persistent(),
+        .oneTime().resized(),
     }),
   ]);
 });
@@ -143,7 +162,9 @@ bot.on("message:text").hears(LANGAUGE_SELECT_REPLIES["ru"], async (ctx) => {
       state: "start",
     }),
     ctx.reply(OnboardingData.messages["language_confirmed"].ru, {
-      reply_markup: new Keyboard().text("Что дальше?").oneTime(),
+      reply_markup: new Keyboard()
+        .text("Что дальше?")
+        .oneTime().resized(),
     }),
   ]);
 });
@@ -160,12 +181,12 @@ const makeReplyKeyboard = (state: State, language: keyof LocalizedString) => {
     keyboard = keyboard.text(reply.text[language]);
     if (index !== array.length - 1) keyboard = keyboard.row();
   });
-  return keyboard.oneTime().persistent();
+  return keyboard.oneTime().resized();
 };
 
 bot.on("message:text", async (ctx) => {
   if (!ctx.user) {
-    await ctx.reply("/start");
+    await ctx.reply("Click: /start");
     return;
   }
 
@@ -180,8 +201,11 @@ bot.on("message:text", async (ctx) => {
     for (let i = 0; i < recivedReply.botActions.length - 1; i++) {
       const action = recivedReply.botActions[i];
       if (action.type === BotActionType.SendMessage) {
-        await ctx.reply(action.text[language]);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await ctx.reply(action.text[language], { parse_mode: "HTML" });
+        await ctx.replyWithChatAction("typing");
+        await new Promise((resolve) =>
+          setTimeout(resolve, ctx.from.id === 81743974 ? 250 : MESSAGES_DELAY)
+        );
       }
     }
 
@@ -191,6 +215,7 @@ bot.on("message:text", async (ctx) => {
       const nextState = OnboardingData.states[recivedReply.nextState];
       await Promise.all([
         ctx.reply(action.text[language], {
+          parse_mode: "HTML",
           reply_markup: makeReplyKeyboard(nextState, language),
         }),
         supabase.from("users").update({ state: recivedReply.nextState }).eq(

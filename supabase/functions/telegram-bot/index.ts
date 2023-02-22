@@ -7,11 +7,8 @@ const handleUpdate = webhookCallback(bot, "std/http");
 
 serve(async (req) => {
   if (req.method == "GET") {
-    return new Response("Hi from GET!");
+    return new Response("ok");
   }
-
-  // Why the fuck doesn't it work without this line?
-  console.debug("Request: ", req);
 
   try {
     const url = new URL(req.url);
